@@ -6,6 +6,7 @@ class Tracker:
         self.host = host
         self.port = port
         self.files = {}  # Cấu trúc: {'filename': [list of peers]}
+        self.chunks = {}  # Cấu trúc: {'filename': total_chunks}
     
     def start(self):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,28 +28,40 @@ class Tracker:
                 command, *params = data.split()
                 
                 if command == "REGISTER":
-                    filename, peer = params
-                    self.register_file(filename, peer)
-                    conn.sendall(f"{filename} registered by {peer}\n".encode('utf-8'))
+                    filename, total_chunks, peer = params
+                    total_chunks = int(total_chunks)  # Chuyển đổi số chunk sang kiểu int
+                    self.register_file(filename, total_chunks, peer)
+                    conn.sendall(f"{filename} registered with {total_chunks} chunks by {peer}\n".encode('utf-8'))
                 
                 elif command == "REQUEST":
                     filename = params[0]
-                    peers = self.get_peers(filename)
-                    conn.sendall(f"Peers for {filename}: {peers}\n".encode('utf-8'))
+                    peers, total_chunks = self.get_peers_and_chunks(filename)
+                    conn.sendall(f"Peers for {filename}: {peers}, Total Chunks: {total_chunks}\n".encode('utf-8'))
         
         finally:
             conn.close()
 
-    def register_file(self, filename, peer):
+    def register_file(self, filename, total_chunks, peer):
+        # Lưu thông tin số chunk cho file
+        if filename not in self.chunks:
+            self.chunks[filename] = total_chunks
+        
+        # Đảm bảo file đã có trong self.files và thêm peer vào danh sách nếu chưa có
         if filename not in self.files:
             self.files[filename] = []
         if peer not in self.files[filename]:
             self.files[filename].append(peer)
-        print(f"Registered file {filename} from peer {peer}")
+        
+        print(f"Registered file {filename} with {total_chunks} chunks from peer {peer}")
 
     def get_peers(self, filename):
         return self.files.get(filename, [])
 
+    def get_peers_and_chunks(self, filename):
+        # Lấy danh sách các peer và tổng số chunk của file
+        peers = self.files.get(filename, [])
+        total_chunks = self.chunks.get(filename, 0)
+        return peers, total_chunks
 # Khởi động Tracker
 if __name__ == "__main__":
     tracker = Tracker()

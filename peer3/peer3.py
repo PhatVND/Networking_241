@@ -8,7 +8,7 @@ class Peer:
         self.tracker_host = tracker_host
         self.tracker_port = tracker_port
         self.files = {}
-        self.total_chunks = 0  # Khởi tạo biến total_chunks
+        self.total_chunks = 0  # Số chunk của file hiện tại mà peer đang giữ
 
         # Khởi tạo socket cho peer để lắng nghe các yêu cầu tải file từ peers khác
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -55,17 +55,18 @@ class Peer:
 
     def register_file(self, filename, file_path):
         self.files[filename] = file_path
+        # Tính tổng số chunks của file
+        self.total_chunks = self.calculate_total_chunks(file_path)
         self.connect_to_tracker()
-        message = f"REGISTER {filename} {self.peer_id}:{self.peer_port}"
+        # Gửi lệnh `REGISTER` cùng với tổng số chunk
+        message = f"REGISTER {filename} {self.total_chunks} {self.peer_id}:{self.peer_port}"
         self.tracker_conn.sendall(message.encode('utf-8'))
         response = self.tracker_conn.recv(1024).decode('utf-8')
         print(response)
         self.tracker_conn.close()
 
-
     def calculate_total_chunks(self, file_path, chunk_size=4096):
         # Đếm tổng số chunks dựa trên kích thước file
-        print(file_path)
         file_size = os.path.getsize(file_path)
         return (file_size + chunk_size - 1) // chunk_size  # Làm tròn lên
     
@@ -86,15 +87,21 @@ class Peer:
         print(response)
         self.tracker_conn.close()
 
-        # Phân tích danh sách các peers
-        if "Peers for" in response and ":" in response:
-            peer_info = response.split(':', 1)[-1].strip()
-            peer_list = peer_info.strip("[]").split(", ")
+        # Phân tích danh sách các peers và tổng số chunks
+        if "Peers for" in response and "Total Chunks:" in response:
+            # Lấy danh sách các peers và tổng số chunk
+            peer_info = response.split("Peers for")[1].split(", Total Chunks:")
+            peers_list_str = peer_info[0].strip()
+            self.total_chunks = int(peer_info[1].strip())
 
-            # Gán peer1 và peer2
+            # Chuyển đổi chuỗi peers thành danh sách các địa chỉ peer
+            peers_list_str = peers_list_str.split(": ", 1)[-1].strip("[]")
+            peer_list = [p.strip("[]' ") for p in peers_list_str.split(", ")]
+
+            # Kiểm tra nếu có ít nhất 2 peers
             if len(peer_list) >= 2:
-                peer1_address = peer_list[0].strip("[]' ")
-                peer2_address = peer_list[1].strip("[]' ")
+                peer1_address = peer_list[0]
+                peer2_address = peer_list[1]
 
                 # Tách host và port
                 host1, port_str1 = peer1_address.split(":")
@@ -103,8 +110,7 @@ class Peer:
 
                 chunks = {}
                 # Yêu cầu từng chunk từ peer1 và peer2
-                # ---------------------------------------------------- CHỖ NÀY CẦN SỬA -----------------------------------------------
-                for chunk_index in range(5):  # Giả sử self.total_chunks chứa tổng số chunks của file 
+                for chunk_index in range(self.total_chunks):  # Sử dụng `self.total_chunks` từ Tracker
                     if chunk_index % 2 == 0:
                         # Chunks chẵn từ peer2
                         chunk = self.download_chunk_from_peer(filename, host2, port2, chunk_index)
@@ -121,7 +127,7 @@ class Peer:
                 self.save_file_from_chunks(filename, chunks)
         else:
             print("Tracker response is not in expected format.")
-
+            
     def download_chunk_from_peer(self, filename, host, port, chunk_index):
         peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         peer_conn.connect(('localhost', port))
@@ -134,7 +140,6 @@ class Peer:
         peer_conn.close()
         return chunk
 
-
 def split_file_into_chunks(file_path, chunk_size=4096):
     chunks = []
     with open(file_path, 'rb') as f:
@@ -144,8 +149,8 @@ def split_file_into_chunks(file_path, chunk_size=4096):
                 break
             chunks.append(chunk)
     return chunks
-# Sử dụng peer
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     peer3 = Peer("peer3")
     peer3.request_file("file1.txt")
+
