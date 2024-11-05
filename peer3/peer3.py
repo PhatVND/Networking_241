@@ -8,14 +8,14 @@ class Peer:
         self.tracker_host = tracker_host
         self.tracker_port = tracker_port
         self.files = {}
-        
+        self.total_chunks = 0  # Khởi tạo biến total_chunks
+
         # Khởi tạo socket cho peer để lắng nghe các yêu cầu tải file từ peers khác
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind(('localhost', 0))
         self.server_socket.listen()
         self.peer_host, self.peer_port = self.server_socket.getsockname()
         print(f"{self.peer_id} is listening on port {self.peer_port}")
-        
         threading.Thread(target=self.listen_for_requests).start()
 
     def listen_for_requests(self):
@@ -62,76 +62,78 @@ class Peer:
         print(response)
         self.tracker_conn.close()
 
-    def request_file(self, filename):
-        self.connect_to_tracker()
-        message = f"REQUEST {filename}"
-        self.tracker_conn.sendall(message.encode('utf-8'))
-        response = self.tracker_conn.recv(1024).decode('utf-8')
-        print(response)
-        self.tracker_conn.close()
-        
-        if "Peers for" in response and ":" in response:
-            peer_info = response.split(':', 1)[-1].strip()
-            peer_list = peer_info.strip("[]").split(", ")
 
-            chunks = {}  # Lưu trạng thái tải của từng chunk
-            for peer_address in peer_list:
-                peer_address = peer_address.strip("[]' ")
-                if ":" in peer_address:
-                    host, port_str = peer_address.split(":")
-                    try:
-                        port = int(port_str)
-                        peer_conn = self.download_file(filename, host, port, chunks)
-                        if all(chunks.values()):
-                            break
-                    except ValueError:
-                        print(f"Error: Invalid port '{port_str}' for peer '{host}'")
-                else:
-                    print(f"Error: Peer address '{peer_address}' is not valid.")
-        else:
-            print("Tracker response is not in expected format.")
+    def calculate_total_chunks(self, file_path, chunk_size=4096):
+        # Đếm tổng số chunks dựa trên kích thước file
+        print(file_path)
+        file_size = os.path.getsize(file_path)
+        return (file_size + chunk_size - 1) // chunk_size  # Làm tròn lên
+    
     def save_file_from_chunks(self, filename, chunks):
         # Sắp xếp các chunks theo thứ tự để lưu chính xác
         with open(filename, 'wb') as f:
             for i in sorted(chunks.keys()):
                 f.write(chunks[i])
         print(f"File `{filename}` đã được tải xong từ các chunks.")
+        self.register_file(filename, filename)
 
-    def download_file(self, filename, host, port, chunks):
-        chunk_index = 0
-        while True:
-            try:
-                # Tạo một kết nối mới cho mỗi chunk
-                peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                peer_conn.connect(('localhost', port))
+    def request_file(self, filename):
+        # Yêu cầu danh sách các peers từ tracker
+        self.connect_to_tracker()
+        message = f"REQUEST {filename}"
+        self.tracker_conn.sendall(message.encode('utf-8'))
+        response = self.tracker_conn.recv(1024).decode('utf-8')
+        print(response)
+        self.tracker_conn.close()
 
-                # Gửi yêu cầu tải chunk cụ thể
-                peer_conn.sendall(f"GET {filename} {chunk_index}".encode('utf-8'))
-                chunk = peer_conn.recv(4096)
+        # Phân tích danh sách các peers
+        if "Peers for" in response and ":" in response:
+            peer_info = response.split(':', 1)[-1].strip()
+            peer_list = peer_info.strip("[]").split(", ")
+
+            # Gán peer1 và peer2
+            if len(peer_list) >= 2:
+                peer1_address = peer_list[0].strip("[]' ")
+                peer2_address = peer_list[1].strip("[]' ")
+
+                # Tách host và port
+                host1, port_str1 = peer1_address.split(":")
+                host2, port_str2 = peer2_address.split(":")
+                port1, port2 = int(port_str1), int(port_str2)
+
+                chunks = {}
+                # Yêu cầu từng chunk từ peer1 và peer2
+                # ---------------------------------------------------- CHỖ NÀY CẦN SỬA -----------------------------------------------
+                for chunk_index in range(5):  # Giả sử self.total_chunks chứa tổng số chunks của file 
+                    if chunk_index % 2 == 0:
+                        # Chunks chẵn từ peer2
+                        chunk = self.download_chunk_from_peer(filename, host2, port2, chunk_index)
+                    else:
+                        # Chunks lẻ từ peer1
+                        chunk = self.download_chunk_from_peer(filename, host1, port1, chunk_index)
+                    
+                    if chunk:
+                        chunks[chunk_index] = chunk
+                    else:
+                        print(f"Failed to download chunk {chunk_index}")
                 
-                # Kiểm tra xem chunk có nhận được không
-                if not chunk:
-                    print(f"Chunk {chunk_index} not available from {host}:{port}")
-                    break
-                
-                # Lưu chunk vào dictionary chunks
-                chunks[chunk_index] = chunk
-                print(f"Downloaded chunk {chunk_index} from {host}:{port}")
+                # Lưu file từ các chunks đã tải
+                self.save_file_from_chunks(filename, chunks)
+        else:
+            print("Tracker response is not in expected format.")
 
-                # Tăng chỉ số chunk
-                chunk_index += 1
+    def download_chunk_from_peer(self, filename, host, port, chunk_index):
+        peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        peer_conn.connect(('localhost', port))
+        # Gửi yêu cầu với số chunk cụ thể
+        peer_conn.sendall(f"GET {filename} {chunk_index}".encode('utf-8'))
+        
+        # Nhận dữ liệu chunk
+        chunk = peer_conn.recv(4096)
+        print(f"Downloaded chunk {chunk_index} from {host}:{port}")
+        peer_conn.close()
+        return chunk
 
-            except ConnectionResetError:
-                print(f"Connection reset by peer {host}:{port} while downloading chunk {chunk_index}")
-                # Thử lại hoặc chuyển sang peer khác nếu cần
-                break
-            
-            finally:
-                # Đảm bảo đóng kết nối sau khi tải xong chunk
-                peer_conn.close()
-
-    # Sau khi hoàn thành việc tải tất cả các chunks, lưu file lại từ các chunks đã tải
-        self.save_file_from_chunks(filename, chunks)
 
 def split_file_into_chunks(file_path, chunk_size=4096):
     chunks = []
