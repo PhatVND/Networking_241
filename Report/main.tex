@@ -1,0 +1,181 @@
+\documentclass[a4paper]{article}
+\usepackage{a4wide,amssymb,epsfig,latexsym,multicol,array,hhline,fancyhdr}
+\usepackage{vntex}
+\usepackage{amsmath}
+\usepackage{lastpage}
+\usepackage[lined,boxed,commentsnumbered]{algorithm2e}
+\usepackage{enumerate}
+\usepackage{color}
+\usepackage{graphicx}							% Standard graphics package
+\graphicspath{Images/}
+\usepackage{array}
+\usepackage{tabularx, caption}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{rotating}
+\usepackage{graphics}
+\usepackage{setspace}
+\usepackage{xltabular}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{ragged2e}
+\usepackage{longtable}
+\usepackage[skip=12pt plus1pt, indent=25pt]{parskip}
+\usepackage{epsfig}
+\usepackage{tikz}
+\usetikzlibrary{arrows,snakes,backgrounds}
+\usepackage{hyperref}
+\hypersetup{urlcolor=blue,linkcolor=black,citecolor=black,colorlinks=true} 
+\usepackage[top=3cm, bottom=3.5cm, left=2.5cm, right=2.5cm]{geometry}
+%\usepackage{pstcol} 								% PSTricks with the standard color package
+
+\newtheorem{theorem}{{\bf Theorem}}
+\newtheorem{property}{{\bf Property}}
+\newtheorem{proposition}{{\bf Proposition}}
+\newtheorem{corollary}[proposition]{{\bf Corollary}}
+\newtheorem{lemma}[proposition]{{\bf Lemma}}
+
+
+% Đặt kích thước của header và footer
+\renewcommand{\footrulewidth}{0.5pt} % Đặt kích thước của footer
+\renewcommand{\headrulewidth}{0.5pt} % Đặt kích thước của header
+
+% Đặt lề cho header và footer
+\setlength{\headsep}{40pt} % Khoảng cách giữa header và nội dung
+\setlength{\footskip}{30pt} % Khoảng cách giữa footer và nội dung
+
+\pagestyle{fancy}
+\fancyhead{} % clear all header fields
+\fancyhead[L]{
+ \begin{tabular}{rl}
+    \begin{picture}(25,15)(0,0)
+    \put(0,-8){\includegraphics[width=8mm, height=8mm]{Images/hcmut.png}}
+    %\put(0,-8){\epsfig{width=10mm,figure=hcmut.eps}}
+   \end{picture}&
+	%\includegraphics[width=8mm, height=8mm]{hcmut.png} & %
+	\begin{tabular}{l}
+		\textbf{\bf \ttfamily University of Technology, Ho Chi Minh City}\\
+		\textbf{\bf \ttfamily Faculty of Computer Science and Engineering}
+	\end{tabular} 	
+ \end{tabular}
+}
+\fancyhead[R]{
+	\begin{tabular}{l}
+		\tiny \bf \\
+		\tiny \bf 
+	\end{tabular}  }
+\fancyfoot{} % clear all footer fields
+\fancyfoot[L]{\scriptsize \ttfamily Assignment for Computer Networking - Academic year 2024 - 2025}
+\fancyfoot[R]{\scriptsize \ttfamily Page {\thepage}/\pageref{LastPage}}
+
+
+
+%%%
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{3}
+\makeatletter
+\newcounter {subsubsubsection}[subsubsection]
+\renewcommand\thesubsubsubsection{\thesubsubsection .\@alph\c@subsubsubsection}
+\newcommand\subsubsubsection{\@startsection{subsubsubsection}{4}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\normalfont\normalsize\bfseries}}
+\newcommand*\l@subsubsubsection{\@dottedtocline{3}{10.0em}{4.1em}}
+\newcommand*{\subsubsubsectionmark}[1]{}
+\makeatother
+\usepackage{pythonhighlight}
+
+
+
+%------------------------------------------------------------------------------%
+\begin{document}
+\begin{spacing}{1.3}
+
+    \begin{titlepage}
+        \begin{center}
+            VIETNAM NATIONAL UNIVERSITY, HO CHI MINH CITY \\
+            UNIVERSITY OF TECHNOLOGY \\
+            FACULTY OF COMPUTER SCIENCE AND ENGINEERING
+        \end{center}
+
+        \vspace{1cm}
+
+        \begin{figure}[h!]
+            \begin{center}
+                \includegraphics[width=3cm]{Images/hcmut.png}
+            \end{center}
+        \end{figure}
+
+        \vspace{1cm}
+
+
+        \begin{center}
+            \begin{tabular}{c}
+                \multicolumn{1}{l}{\textbf{{\Large COMPUTER NETWORKING}}} \\
+                ~~                                                     \\
+                \hline
+                \\
+                \multicolumn{1}{l}{\textbf{{\Large Assignment}}}       \\
+                \\
+                \textbf{{\Huge DEVELOP A NETWORK}}        \\
+                \\
+                \textbf{{\Huge APPLICATION}}        \\
+                \\
+                \hline
+            \end{tabular}
+        \end{center}
+
+        \vspace{3cm}
+
+        \begin{table}[h]
+            \begin{tabular}{rrl}
+                \hspace{5 cm} & Advisor:  & La Quốc Nhựt Huân                                    \\
+                              & Students: & Võ Nguyễn Đức Phát - 2212540 \\
+                              &           & Nguyễn Đăng Cường -  \\
+                              &           & Trần Phước Nhật -  \\
+                              &           & Trần Uy -  \\
+
+            \end{tabular}
+        \end{table}
+
+        \begin{center}
+            {\footnotesize HO CHI MINH CITY, NOVEMBER 2024}
+        \end{center}
+    \end{titlepage}
+
+
+    %\thispagestyle{empty}
+
+    \newpage
+    \tableofcontents
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \include{MemberList&WorkLoad}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \include{Phan1}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \include{Phan2}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \include{Phan3}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \include{PutItAll}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \begin{thebibliography}{80}
+
+
+        \bibitem{bib1}
+        ...
+
+
+        \bibitem{bib2}
+        ...
+
+    \end{thebibliography}
+
+\end{spacing}
+\end{document}
+

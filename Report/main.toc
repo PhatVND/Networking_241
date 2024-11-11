@@ -1,0 +1,14 @@
+\contentsline {section}{\numberline {1}Cơ sở lý thuyết}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Mô hình Peer To Peer là gì?}{3}{subsection.1.1}%
+\contentsline {section}{\numberline {2}Phase 1}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Đăng ký tệp, tải tệp với tracker}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Yêu cầu file, tải file xuống từ tracker}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Đăng nhập vào hệ thống để sử dụng}{5}{subsection.2.3}%
+\contentsline {section}{\numberline {3}Phase 2}{6}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Các chức năng, hàm trong Bài tập lớn}{6}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Diagram}{6}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Quản lý trên Database}{6}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Demo Code}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Các chức năng, hàm trong Bài tập lớn}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Diagram}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Quản lý trên Database}{7}{subsection.4.3}%

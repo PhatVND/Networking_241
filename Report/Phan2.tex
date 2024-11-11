@@ -1,0 +1,53 @@
+\section{Phase 1}
+\subsection*{Xác định và mô tả các chức năng của ứng dụng và các giao thức}
+
+Trong mô hình BitTorrent, các chức năng chính của ứng dụng và giao thức được thực hiện qua sự phối hợp giữa các peer và tracker để chia sẻ tệp tin hiệu quả. Các chức năng cơ bản bao gồm: \textit{đăng ký tệp} với tracker, \textit{yêu cầu tệp} từ tracker, và \textit{cung cấp thông tin các peer đang nắm giữ tệp}.
+
+\subsection{Đăng ký tệp, tải tệp với tracker}
+Khi một peer muốn chia sẻ tệp tin, bước đầu tiên là \textbf{register - đăng ký tệp} với tracker. Quá trình này diễn ra khi peer gửi một thông báo đến tracker để báo rằng nó đang nắm giữ một bản sao của tệp tin cần chia sẻ. Tracker sẽ lưu trữ thông tin về peer này,
+bao gồm địa chỉ của peer và thông tin về tệp tin mà nó nắm giữ. Điều này cho phép các peer khác dễ dàng tìm thấy tệp khi cần. Quá trình đó diễn ra cụ thể như sau:
+\begin{itemize}
+    \item Chọn tệp cần chia sẻ: Người dùng sử dụng giao diện của ứng dụng để chọn các tệp hoặc
+    thư mục mà họ muốn chia sẻ với người dùng khác trên mạng. Đây có thể là các tệp đã có
+    sẵn trên máy tính của họ. Lưu ý là phải ghi rõ về định dạng của tệp cần chia sẻ (Ví dụ: muốn chia sẻ file pdf, gọi rõ ra là "Data.pdf")
+    \item Xác định phần trích dẫn (hash): Trước khi tải tệp lên, ứng dụng sẽ tạo ra một phần trích
+    dẫn hoặc hash cho các phần của tệp. Hash này được sử dụng để xác minh tính toàn vẹn và đánh dấu riêng biệt
+    của tệp trong quá trình tải xuống.
+    \item Tệp được chia thành các phần nhỏ có kích thước cố định, gọi là các chunk. Mỗi chunk được gắn với một mã hash để xác thực và nhận diện duy nhất phần dữ liệu đó.
+    \item Tạo tệp torrent: Ứng dụng sẽ tạo một tệp metainfo (.torrent file) chứa thông tin về tệp,
+    các phần trích dẫn (hash) của các chunk, và các thông tin khác như tên tệp, kích thước để khi 1 peer muốn download thì tracker sẽ dựa trên .torrent file này và đưa thông tin cho peer cần download.
+    \item Chia sẻ tệp torrent: Sau khi tạo tệp torrent, người dùng có thể chia sẻ tệp này với người
+    dùng khác thông qua email, trang web, hoặc các kênh khác trên mạng. Tệp torrent này
+    chứa thông tin cần thiết để người dùng khác có thể tìm kiếm và tải tệp từ nguồn chia sẻ.
+    \item Kết nối và chia sẻ thông tin: Khi người dùng khác tìm thấy tệp torrent và muốn tả
+    xuống, họ sẽ kết nối với máy tính của người chia sẻ thông qua mạng BitTorrent. Từ đó, các máy tính có giữ tệp đó
+    sẽ gửi các phần nhỏ của tệp (chunk) cho người tải xuống từ máy tính của họ.
+\end{itemize}
+Đối với việc giao tiếp như này, giao thức truyền thông được sử dụng là: \textbf{HTTP} - gửi yêu cầu đăng ký đến tracker, thông báo rằng nó có một tệp tin cụ thể 
+và sẵn sàng chia sẻ. Yêu cầu này bao gồm cả IP của các peer, mã port. Ngoài ra, còn sử dụng giao thức BitTorrent để kết nối trực tiếp giữa các peer.
+
+\subsection{Yêu cầu file, tải file xuống từ tracker}
+Khi một peer khác cần tải tệp, nó sẽ thực hiện chức năng \textbf{yêu cầu tệp} từ tracker. Peer này gửi yêu cầu đến tracker, bao gồm thông tin về tên, định dạng của tệp tin cần tải. Tracker sẽ kiểm tra database và tìm kiếm các peer khác đang có bản sao (cụ thể là các chunk) của file này. Đây là bước rất cần thiết để peer yêu cầu biết được các peer nào có thể cung cấp file. Cụ thể như sau:
+\begin{itemize}
+    \item Tìm kiếm tệp: Người dùng sử dụng CLI của ứng dụng để nhập các thông tin tìm kiếm
+    như tên tệp, định dạng để báo cho tracker biết. Sau đó, tracker sẽ tìm kiếm file .torrent trong database để có được thông tin về các peer và đang nắm giữ file này.
+    \item Phản hồi lại yêu cầu tìm kiếm: Tracker nhận yêu cầu tìm kiếm và phản hồi bằng danh sách các peer đang nắm giữ tệp tin cần tìm. Danh sách này bao gồm địa chỉ IP, cổng kết nối, và các thông tin về các chunk cụ thể mà mỗi peer đang nắm giữ của tệp đó, giúp peer yêu cầu có thể kết nối và tải dữ liệu một cách hiệu quả.
+    \item Kết nối và tải xuống: Khi đã có được thông tin chi tiết về file cần tải, ứng dụng sẽ có thuật toán phù hợp để tự động tải về theo 1 cách tối ưu và hiệu quả nhất cho người dùng.
+    \item Hoàn thành tải xuống: Khi tất cả các phần của tệp đã được tải xuống, ứng dụng tự động
+    kiểm tra và xác minh tính toàn vẹn của tệp, sau đó thông báo cho người dùng rằng quá
+    trình tải xuống đã hoàn tất.
+\end{itemize}
+Giao thức truyền thông được sử dụng ở chức năng này là \textbf{HTTP} - Sử dụng để tìm kiếm và tải xuống tệp thông qua IP, port. Tương tự chức năng trên, 
+cũng sử dụng mạng BitTorrent để các peer có thể giao tiếp trực tiếp với nhau. 
+
+\subsection{Đăng nhập vào hệ thống để sử dụng}
+Chức năng này cho phép người dùng đăng nhập vào hệ thống thông qua giao diện dòng lệnh (CLI) trên terminal. Sau khi đăng nhập thành công, người dùng sẽ có quyền truy cập vào cơ sở dữ liệu để thực hiện các thao tác liên quan đến tracker trong mô hình BitTorrent.
+\begin{itemize}
+    \item Khi chạy chương trình Python qua terminal, người dùng sẽ được yêu cầu nhập tên người dùng và mật khẩu.
+    \item Hệ thống kiểm tra thông tin đăng nhập từ cơ sở dữ liệu để xác thực. Nếu thông tin hợp lệ, quá trình đăng nhập thành công và người dùng có quyền truy cập vào hệ thống.
+    \item Sau khi đăng nhập, người dùng có thể gọi tracker để register file hoặc request file của các peer nắm giữ tệp cần thiết.
+\end{itemize}
+Trong chức năng đăng nhập và kết nối với cơ sở dữ liệu để gọi tracker qua CLI, các giao thức chính bao gồm:
+\begin{itemize}
+    \item PostgreSQL: Sử dụng giao thức TCP để kết nối qua cổng mặc định 5432.
+\end{itemize}

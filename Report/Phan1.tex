@@ -1,0 +1,14 @@
+\section{Cơ sở lý thuyết}
+\subsection{Mô hình Peer To Peer là gì?}
+Mô hình \textbf{Peer-to-Peer (P2P)} là một cấu trúc mạng theo dạng phân tán, trong đó các thiết bị hoặc \textit{peer} đóng vai trò vừa là máy khách (client) vừa là máy chủ (server) trong quá trình trao đổi tài nguyên với nhau. Khác với kiểu mô hình truyền thống Client-Server, nơi mà chỉ có một máy chủ tập trung phục vụ các máy khách, mô hình P2P
+không yêu cầu một máy chủ trung tâm để quản lý dữ liệu.
+Thay vào đó, mỗi peer có khả năng cung cấp và nhận dữ liệu trực tiếp với các peer khác trong mạng. Điều này giúp cải thiện hiệu quả sử dụng băng thông, tăng khả năng mở rộng một cách dễ dàng cũng như khả năng chịu lỗi của hệ thống.
+
+Trong bối cảnh của Bài tập lớn này, cụ thể là mạng chia sẻ dữ liệu \textit{BitTorrent}, mô hình P2P cho phép các peer chia sẻ các phần của tệp tin với nhau, ngay khi chúng vừa tải về thành công. Cơ chế này giúp tối ưu hóa tốc độ tải tệp, vì một peer không cần phải tải toàn bộ tệp từ một nguồn duy nhất.
+Nó có thể nhận dữ liệu từ nhiều peer khác nhau đồng thời, giao tiếp với các peer đó. Ngoài ra, một yếu tố quan trọng trong BitTorrent là sự có mặt của \textbf{tracker}, giúp quản lý và cung cấp thông tin về các peer đang chia sẻ tệp.
+Tracker không lưu trữ tệp tin mà chỉ đóng vai trò cung cấp thông tin để các peer tìm thấy nhau dễ dàng hơn trong mạng.
+
+Kết hợp giữa tính năng phân phối và cấu trúc phân tán của mô hình P2P, BitTorrent đã trở thành một trong những phương thức chia sẻ tệp phổ biến nhất trên thế giới, nổi bật với khả năng giảm tải cho các máy chủ trung tâm và tăng tốc độ truyền tải cho người dùng. Bằng lẽ đó, trong bài tập lớn này sẽ mô tả lại cách hiện thực 
+1 ứng dụng áp dụng mạng chia sẻ dữ liệu BitTorrent cơ bản.
+
+
