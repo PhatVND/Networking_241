@@ -4,10 +4,18 @@ This project implements a basic peer-to-peer (P2P) file-sharing system with a tr
 
 ## Files
 
-1. **`tracker.py`**: The tracker that coordinates file sharing among peers.
-2. **`peer.py`**: The peer that can register files to the tracker and download files from other peers.
+1. **`peer.py`**: The peer that can register files to the tracker and download files from other peers.
+2. **`torrentClient.py`**: The peer that can register files to the tracker and download files from other peers.
+3. **`tracker.py`**: The tracker that coordinates file sharing among peers.
+4. **`database.py`**: The peer that can register files to the tracker and download files from other peers.
+5. **`queries.sql`**: Tracker used to create table.
+
 
 ## How to Run the Code
+
+### Connect database
+Install database postgresql and GUI like SQLTools with its driver.
+Install some package like psycopg2, bencodepy
 
 ### 1. Start the Tracker (`tracker.py`)
 
@@ -21,27 +29,41 @@ To start the tracker, follow these steps:
 python tracker.py
 ```
 This will start the tracker on localhost and it will listen on port 5000 for peer requests.
-## Publish a File (on Peer)
+
+## 2. Create Torrent (on Peer)
 - Open a terminal, run:
 ```bash
 python peer.py
 ```
-- Enter username, then choose:    1 or publish → Enter filename and file path. Example:
+- Enter username, then choose:    1 or torrent → Enter filename and file path. Example:
 ```bash
 1
 file.txt
 ./peer1
 ```
-## Download a File (on Another Peer)
+## 3. Seeding a File (on Peer)
 - Open a terminal, run:
 ```bash
 python peer.py
 ```
-- Enter username, then choose:    2 or publish or download → Enter filename and download path. Example:
+- Enter username, then choose:    2 or seeding → Enter filename and file path. Example:
 ```bash
 2
 file.txt
-./bokunopico/theplace_ilive
+./peer1
+```
+## 4. Download a File (on Another Peer)
+- Open a terminal, run:
+```bash
+python peer.py
+```
+- Enter username, then choose:    3 or download → Enter filename and download path. Example:
+```bash
+3
+file.txt
+./peer2
 ```
 ## Exit the Program
-- Type 3 or exit to exit.
+- Crtl + C 
+## Supervisor Database
+- Go to database to watch change when register, when a peer disconnect or tracker disconnect

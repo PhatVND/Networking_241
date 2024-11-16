@@ -1,31 +1,30 @@
 import logging
 import socket
 import threading
-import psycopg2
+import hashlib
+import os
+from database import *
+
+log_dir = './log'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('tracker.log'),
+        logging.FileHandler(os.path.join(log_dir, 'tracker.log')),
         logging.StreamHandler()
     ]
 )
 
-try:
-    conn = psycopg2.connect(dbname="", user="postgres", password="12345678", host="localhost", port="5432")
-    cur = conn.cursor()
-    logging.info("Database connected successfully.")
-except Exception as e:
-    logging.error(f"Error connecting to database: {e}")
-    exit(1)
+execute_sql_from_file('queries.sql')
 
 class Tracker:
     def __init__(self, host='127.0.0.1', port=5000):
         self.host = host
         self.port = port
-        self.files = {}  # multiple arrays contain peers info base on filename
-        self.chunks = {}  # multiple arrays contain chunks info base on filename
+        self.pieces = {}  # multiple arrays contain pieces info base on filename
 
     def start(self):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,31 +37,41 @@ class Tracker:
             while True:
                 conn, addr = server.accept()
                 logging.info(f"Connected by {addr}!")
-
                 threading.Thread(target=self.handle_peer, args=(conn,)).start()
         except KeyboardInterrupt:
             logging.info("Tracker shutdown requested.")
+            drop_tables_from_database()
         finally:
             server.close()
 
     def handle_peer(self, conn):
+        
         try:
             while True:
                 data = conn.recv(1024).decode('utf-8')
                 if data:
-                    command, *params = data.split()
-                    filename = params[0]
+                    command, *params = data.split(' ')
                     if command == "REGISTER":
-                        total_chunks = int(params[1])
-                        chunk_list = params[2:-1]
-                        peer = params[-1]
-                        logging.info(f"Registering file {filename} with {total_chunks} chunks from peer_id: {peer}")
-                        self.register_file(filename, total_chunks, peer)
-                        conn.sendall(f"{filename} registered with {total_chunks} chunks by {peer}\n".encode('utf-8'))
+                        info_hash = params[0]
+                        piece_index_list = list(map(int, params[1].split(',')))
+                        peer_ip = params[2]
+                        piece_registered = register_piece_in_database(info_hash, piece_index_list, peer_ip)
+                        if not piece_registered:
+                            conn.sendall(f"Failed to register {info_hash} from peer_ip {peer_ip}\n".encode('utf-8'))
+                            continue
+                        else: conn.sendall(f"Registered {info_hash} successfully!\n".encode('utf-8'))
 
-                    elif command == "REQUEST":
-                        peers, total_chunks = self.get_peers_and_chunks(filename)
-                        conn.sendall(f"Peers for {filename}: {peers}, Total Chunks: {total_chunks}\n".encode('utf-8'))
+                    elif command == "DOWNLOAD":
+                        torrent_hash = params[0]
+                        peers_list = get_peers_list_seeding_file_from_database(torrent_hash)
+                        if not peers_list:
+                            conn.sendall(f"No peers found for {torrent_hash}\n".encode('utf-8'))
+                            continue
+                        else: conn.sendall(f"Downloading {torrent_hash} from peers: {peers_list}\n".encode('utf-8'))
+                    elif command == "EXIT":
+                        peer_ip = params[0]
+                        delete_peer_from_database(peer_ip)
+                        logging.info(f"Peer {peer_ip} DISCONNECTED!!!")
                 else:
                     break
         except Exception as e:
@@ -70,26 +79,6 @@ class Tracker:
 
         finally:
             conn.close()
-
-    def register_file(self, filename, total_chunks, peer):
-        if filename not in self.chunks:
-            self.chunks[filename] = total_chunks
-        # initialize peer list in files array if it doesn't exist
-        if filename not in self.files:
-            self.files[filename] = []
-
-        # add peer to peer list
-        if peer not in self.files[filename]:
-            self.files[filename].append(peer)
-
-        logging.info(f"Registered file {filename} with {total_chunks} chunks from peer {peer}")
-
-    def get_peers_and_chunks(self, filename):
-        peers = self.files.get(filename, [])
-        if peers:
-            total_chunks = self.chunks.get(filename, 0)
-            return peers, total_chunks
-        return [], 0
 
 if __name__ == "__main__":
     tracker = Tracker()
