@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import logging
+sys.stdout.reconfigure(encoding='utf-8')
 
 # Cấu hình logging
 logging.basicConfig(
@@ -41,12 +42,12 @@ class Peer:
         try:
             data = conn.recv(1024).decode('utf-8')
             command, *params = data.split()
-            
+
             if command == "GET":
                 filename, chunk_index = params[0], int(params[1])
                 if filename in self.files:
                     with open(self.files[filename], 'rb') as f:
-                        f.seek(chunk_index * 4096)
+                        f.seek(chunk_index * 4096)  # Đọc chunk theo vị trí
                         chunk = f.read(4096)
                         if chunk:
                             conn.sendall(chunk)
@@ -55,12 +56,12 @@ class Peer:
                             logging.warning(f"Chunk {chunk_index} not available in {filename}")
                 else:
                     conn.sendall(f"{filename} not found on {self.peer_id}".encode('utf-8'))
-                    
+
         except Exception as e:
             logging.error(f"Error handling request: {e}")
-            
+
         finally:
-            conn.close() 
+            conn.close()
 
     def connect_to_tracker(self):
         self.tracker_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -109,11 +110,18 @@ class Peer:
         full_file_path = os.path.join(file_path, filename)
         if not os.path.exists(file_path):
             os.makedirs(file_path)
-        with open(full_file_path, 'wb') as f:
-            for i in sorted(chunks.keys()):
-                f.write(chunks[i])
-        logging.info(f"File `{filename}` already downloaded!")
-        self.register_file(filename, file_path)
+
+        try:
+            with open(full_file_path, 'wb') as f:
+                for i in sorted(chunks.keys()):
+                    f.write(chunks[i])  # Viết từng chunk vào file
+            logging.info(f"File `{filename}` has been successfully downloaded and saved to `{file_path}`.")
+            
+            # Đăng ký file đã hoàn chỉnh lên tracker
+            self.register_file(filename, file_path)
+        except Exception as e:
+            logging.error(f"Error saving file `{filename}`: {e}")
+
 
     def request_file(self, filename, file_path):
         full_file_path = os.path.join(file_path, filename)
@@ -130,47 +138,50 @@ class Peer:
             self.total_chunks = int(peer_info[1].strip())
             peers_list_str = peers_list_str.split(": ", 1)[-1].strip("[]")
             peer_list = [p.strip("[]' ") for p in peers_list_str.split(", ")]
-            if len(peers_list_str) == 0:
+
+            if not peer_list:
                 logging.warning("No peers available for the file.")
                 return
-            elif self.total_chunks == 0:
-                logging.warning("No chunks available for the file.")
-                return
-
-            logging.info(response)
 
             chunks = {}
-            start_time = time.time()
-            last_response_time = start_time
-
             for chunk_index in range(self.total_chunks):
+                # Lấy peer theo vòng tròn (round-robin)
                 peer_address = peer_list[chunk_index % len(peer_list)]
                 host, port_str = peer_address.split(":")
                 port = int(port_str)
+
+                # Tải chunk từ peer
                 chunk = self.download_chunk_from_peer(filename, host, port, chunk_index)
                 if chunk:
-                    self.chunk_list.add(chunk_index)
                     chunks[chunk_index] = chunk
                 else:
                     logging.warning(f"Failed to download chunk {chunk_index}")
 
-                current_time = time.time()
-                if current_time - last_response_time >= 5:
-                    self.register_file(filename, full_file_path)
-                    last_response_time = current_time
-
+            # Lưu file từ các chunks đã tải
             self.save_file_from_chunks(filename, file_path, chunks)
         else:
             logging.error("Tracker response is not in expected format.")
             
     def download_chunk_from_peer(self, filename, host, port, chunk_index):
-        peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        peer_conn.connect(("localhost", port))
-        peer_conn.sendall(f"GET {filename} {chunk_index}".encode('utf-8'))
-        chunk = peer_conn.recv(4096)
-        logging.info(f"Downloaded chunk {chunk_index} from {host}:{port}")
-        peer_conn.close()
-        return chunk
+        try:
+            peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            peer_conn.settimeout(10)  # Timeout để tránh treo
+            peer_conn.connect(('127.0.0.1', port))
+            peer_conn.sendall(f"GET {filename} {chunk_index}".encode('utf-8'))
+            
+            chunk = peer_conn.recv(4096)  # Nhận chunk nhị phân từ peer
+            if chunk:
+                logging.info(f"Downloaded chunk {chunk_index} from {host}:{port}")
+                return chunk
+            else:
+                logging.warning(f"Chunk {chunk_index} is empty or not available from {host}:{port}")
+                return None
+        except Exception as e:
+            logging.error(f"Error downloading chunk {chunk_index} from {host}:{port}: {e}")
+            return None
+        finally:
+            peer_conn.close()
+
 
     def input_commands(self):
         logging.info(f"Welcome {self.peer_id}!")
