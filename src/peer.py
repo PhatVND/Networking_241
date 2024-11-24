@@ -7,7 +7,7 @@ import logging
 import logging.handlers
 from torrentClient import *
 
-log_dir = './log'
+log_dir = '../log'
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
@@ -164,7 +164,7 @@ class Peer:
                 self.register_pieces(torrent.info_hash, piece_index_list, self.peer_ip)
                 last_response_time = current_time
 
-        full_torrent_file_path = os.path.join('./torrent', torrent.file_name + '.torrent')
+        full_torrent_file_path = os.path.join('../torrent', torrent.file_name + '.torrent')
         self.register_file(full_torrent_file_path, file_path)
         logging.info( f"Download file completed in {time.time() - start_time} seconds")
 
@@ -243,7 +243,7 @@ class Peer:
 
                 if command == "1" or command == "torrent":
                     filename = input("Enter file name to create torrent: ")
-                    file_path = input(f"Enter file path: ")
+                    file_path = "../" +input(f"Enter file path: ")
                     full_file_path = os.path.join(file_path, filename)
                     if self.file_exists(full_file_path):
                         torrent_file_creater(full_file_path)
@@ -252,9 +252,9 @@ class Peer:
 
                 elif command == "2" or command == "seeding":
                     file_name = input("Enter name before .torrent to seed: ")
-                    file_path = input(f"Enter path of original file: ")
+                    file_path = "../" + input(f"Enter path of original file: ")
                     full_file_path = os.path.join(file_path, file_name)
-                    full_torrent_file_path = os.path.join('./torrent', file_name + '.torrent')
+                    full_torrent_file_path = os.path.join('torrent', file_name + '.torrent')
                     
                     if self.file_exists(full_torrent_file_path):
                         if self.file_exists(full_file_path):
