@@ -1,0 +1,11 @@
+# Ignore VSCode settings folder
+.vscode/
+
+# Ignore torrent folder
+./torrent/
+
+# Ignore log folder
+./log/
+
+# Ignore Python cache files
+__pycache__/

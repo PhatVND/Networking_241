@@ -194,4 +194,3 @@ if __name__ == "__main__":
     # torrent_file_path = "gameoflifehowtop00shin_archive.torrent"
     # torrent_file_path = "ubuntu-24.04.1-live-server-amd64.iso.torrent"
     torrent = torrent_file_reader(torrent_file_path)
-    print(torrent.__str__())
