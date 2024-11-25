@@ -35,7 +35,6 @@ class Tracker:
         try:
             while True:
                 conn, addr = server.accept()
-                logging.info(f"Connected by {addr}!")
                 threading.Thread(target=self.handle_peer, args=(conn,)).start()
         except KeyboardInterrupt:
             logging.info("Tracker shutdown requested.")

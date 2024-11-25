@@ -110,6 +110,7 @@ class torrent_file_creater(torrent_metadata):
     def __init__(self, full_file_path: str):
         self.trackers_url_list = ['udp://tracker.example.com:6969']
         self.full_file_path = full_file_path
+        print(self.full_file_path)
         self.file_name = os.path.basename(full_file_path)
         self.file_size = os.path.getsize(full_file_path)
         self.piece_length = 4096

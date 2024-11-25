@@ -44,7 +44,7 @@ class File:
         self.pieces = pieces
         self.info_hash = info_hash
         self.pieces_hash = {}
-        self.pieces_index_list = {} #set of piece index which are not downloaded
+        self.pieces_index_list = set() #set of piece index which are not downloaded
 
 class Peer:
     def __init__(self, tracker_host, tracker_port):
@@ -92,7 +92,7 @@ class Peer:
             logging.error( f"Error handling request: {e}")
             
         finally:
-            conn.close() 
+            conn.close()
 
     def connect_to_tracker(self, tracker_host, tracker_port):
         self.tracker_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -113,18 +113,34 @@ class Peer:
             for piece_index in piece_index_list:
                 self.files[torrent_hash].pieces_index_list.discard(piece_index)
 
+            piece_index_list_str = ",".join(map(str, piece_index_list))
             ##################################
-            peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            peer_conn.connect((peer_host, peer_port))
-            peer_conn.sendall(f"REGISTER {torrent_hash} {','.join(map(str, piece_index_list))}".encode('utf-8'))
-            response = peer_conn.recv(1024).decode('utf-8')
+            self.connect_to_tracker(self.tracker_host, self.tracker_port)
+            message = f"REGISTER {torrent_hash} {piece_index_list_str} {self.peer_ip}"
+            self.tracker_conn.sendall(message.encode('utf-8'))
+            response = self.tracker_conn.recv(1024).decode('utf-8')
             ##################################
             logging.debug(response)
+            return response
         except Exception as e:
             logging.error(f"Error registering pieces for {torrent_hash} with {peer_ip}: {e}")
         finally:
-            peer_conn.close()
+            self.tracker_conn.close()
         
+    def register_file(self, file_name, file_path):
+        torrent = torrent_file_reader(file_name)
+        try:
+            piece_index_list = [i for i in range(torrent.pieces_count)]
+            self.files[torrent.info_hash] = File(torrent.file_name, file_path, torrent.file_size,
+                                                 torrent.piece_length, torrent.pieces_count, 
+                                                 torrent.pieces, torrent.info_hash)
+            response = self.register_pieces(torrent.info_hash, piece_index_list, self.peer_ip)
+            logging.info(response)
+        except Exception as e:
+            logging.error( f"Error connecting to tracker: {e}")
+            return f"Failed to register file due to tracker connection issue."
+        finally:
+            self.tracker_conn.close()
     def download_piece_from_peer(self, torrent, file_path, piece_index, peer_ip):
         
         full_file_path = os.path.join(file_path, torrent.file_name)
@@ -176,9 +192,13 @@ class Peer:
             response = self.tracker_conn.recv(1024).decode('utf-8')
             ##################################
             logging.debug(response)
-            if response.startswith("Downloading"):
-                peers_list_str = response.split("Downloading ")[1].split(": ")[1]
+            if response.startswith("Get peers list for "):
+                peers_list_str = response.split("Get peers list for ")[1].split("are: ")[1]
                 peers_list = [p.strip("' ") for p in peers_list_str.strip("[]\n").split(", ") if p]
+            
+            if self.peer_ip in peers_list:
+                peers_list.remove(self.peer_ip)
+
             return peers_list
         except Exception as e:
             logging.error( f"Error getting peers list: {e}")
@@ -218,7 +238,6 @@ class Peer:
                     download_thread.start()
                 for downloading_thread in downloading_thread_pool:
                     downloading_thread.join()
-
                 self.register_pieces(torrent.info_hash, piece_index_list[:turnAmount], self.peer_ip)
             except Exception as e:
                 logging.error( f"Error downloading pieces from peer {peer_ip}: {e}")
@@ -230,27 +249,7 @@ class Peer:
 
         logging.info( f"Download file completed in {round(time.time() - start_time, 2)} seconds")
 
-    def register_file(self, file_name, file_path):
-        torrent = torrent_file_reader(file_name)
-        try:
-            piece_index_list = [i for i in range(torrent.pieces_count)]
-            piece_index_str = ",".join(map(str, piece_index_list))
-            ##################################
-            self.connect_to_tracker(self.tracker_host, self.tracker_port)
-            message = f"REGISTER {torrent.info_hash} {piece_index_str} {self.peer_host}:{self.peer_port}"
-            self.tracker_conn.sendall(message.encode('utf-8'))
-            response = self.tracker_conn.recv(1024).decode('utf-8')
-            logging.info(response)
-            ##################################
-            self.files[torrent.info_hash] = File(torrent.file_name, file_path, torrent.file_size,
-                                                 torrent.piece_length, torrent.pieces_count, 
-                                                 torrent.pieces, torrent.info_hash)
-        except Exception as e:
-            logging.error( f"Error connecting to tracker: {e}")
-            return f"Failed to register file due to tracker connection issue."
-        finally:
-            self.tracker_conn.close()
- 
+    
     def download_file(self, file_name, file_path):
         try:
             torrent = torrent_file_reader( file_name )
@@ -261,13 +260,14 @@ class Peer:
 
             self.download_stratergy(torrent, file_path) 
 
-            self.register_file(file_name, file_path)
+            # self.register_file(file_name, file_path)
 
         except Exception as e:
             logging.error( f"Error downloading file: {e}")
         finally:
             if hasattr(self, 'tracker_conn') and self.tracker_conn:
                 self.tracker_conn.close()
+
 
     def exit_peer(self):
         ##################################
@@ -290,13 +290,13 @@ class Peer:
                 command = input("Enter command: ").strip().lower()
 
                 if command == "1" or command == "torrent":
-                    filename = input("Enter file name to create torrent: ")
+                    file_name = input("Enter file name to create torrent: ")
                     file_path = "." +input(f"Enter file path: ")
-                    full_file_path = os.path.join(file_path, filename)
+                    full_file_path = os.path.join(file_path, file_name)
                     if self.file_exists(full_file_path):
-                        torrent_file_creater(file_name)
+                        torrent_file_creater(full_file_path)
                     else:
-                        logging.error( f"File {filename} not found!")
+                        logging.error( f"File {file_name} not found!")
 
                 elif command == "2" or command == "seeding":
                     file_name = input("Enter name before .torrent to seed: ")

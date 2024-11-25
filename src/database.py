@@ -98,7 +98,7 @@ def register_piece_in_database(info_hash, pieces_list, peer_ip):
         VALUES (%s, %s, %s)
         ON CONFLICT (info_hash, piece_index, peer_ip) DO NOTHING;
     """
-    params = [(info_hash, piece_index, peer_ip) for piece_index, _ in enumerate(pieces_list)]
+    params = [(info_hash, piece_index, peer_ip) for piece_index in pieces_list]
     try:
         for param in params:
             execute_sql_query(query, param)
