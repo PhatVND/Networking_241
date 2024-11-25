@@ -17,8 +17,9 @@ class torrent_metadata:
         self.files          = files       
 class torrent_file_reader(torrent_metadata):
     
-    def __init__(self, torrent_file_path):
-        with open(torrent_file_path, 'rb') as file:
+    def __init__(self, file_name):
+        full_torrent_file_path = os.path.join('../torrent', file_name + '.torrent')
+        with open(full_torrent_file_path, 'rb') as file:
             torrent_data = file.read()
         self.torrent_file_raw_extract = bencodepy.decode(torrent_data)
         
@@ -26,16 +27,18 @@ class torrent_file_reader(torrent_metadata):
             self.encoding = self.torrent_file_raw_extract[b'encoding'].decode()
         else:
             self.encoding = 'UTF-8'
-        
+        ##################### 
         self.torrent_file_extract = self.extract_torrent_metadata(self.torrent_file_raw_extract)
+        ##################### 
+
         if 'announce-list' in self.torrent_file_extract.keys():
             trackers_url_list = self.torrent_file_extract['announce-list'] 
         else:
             trackers_url_list = [self.torrent_file_extract['announce']]
         file_name    = self.torrent_file_extract['info'][b'name'].decode(self.encoding)
         piece_length = self.torrent_file_extract['info'][b'piece length']
-        pieces       = self.torrent_file_extract['info'][b'pieces']
-        pieces_count = int(len(pieces) / 20)
+        pieces       = self.split_piece_hash(self.torrent_file_extract['info'][b'pieces'])
+        pieces_count = len(pieces)
         info_hash    = generate_info_hash(self.torrent_file_extract['info'])
         files = None
         if b'files' in self.torrent_file_extract['info'].keys():
@@ -49,10 +52,10 @@ class torrent_file_reader(torrent_metadata):
         super().__init__(trackers_url_list, file_name, file_size, piece_length, pieces_count, pieces, info_hash, files)
             
 
-
+    def split_piece_hash(self, piece_hash):
+        return [piece_hash[i:i+20] for i in range(0, len(piece_hash), 20)]
     def extract_torrent_metadata(self, torrent_file_raw_extract):
         torrent_extract = OrderedDict()
-        
         for key, value in torrent_file_raw_extract.items():
             new_key = key.decode(self.encoding)
             if type(value) == OrderedDict:
@@ -75,10 +78,8 @@ class torrent_file_reader(torrent_metadata):
                     torrent_extract[new_key] = value
             else :
                 torrent_extract[new_key] = value
-
         return torrent_extract
 
-    
     def get_data(self):
         return torrent_metadata(self.trackers_url_list, self.file_name, 
                                 self.file_size,         self.piece_length, self.pieces_count,     
@@ -161,7 +162,7 @@ class torrent_file_creater(torrent_metadata):
 
         encoded_metadata = bencodepy.encode(metadata)
 
-        torrent_dir_path = os.path.join('torrent')
+        torrent_dir_path = os.path.join('../torrent')
         if not os.path.exists(torrent_dir_path):
             os.makedirs(torrent_dir_path)
 
@@ -172,25 +173,7 @@ class torrent_file_creater(torrent_metadata):
         print(f"New .torrent file created: {torrent_path}")
         return torrent_path
 
-    # def __str__(self) -> str:
-    #     return (f"Torrent File Creator for {self.file_name}:\n"
-    #             f"  File Size: {self.file_size} bytes\n"
-    #             f"  Piece Length: {self.piece_length} bytes\n"
-    #             f"  Info Hash: {self.info_hash.hex()}\n"
-    #             f"  Tracker URLs: {self.trackers_url_list}\n"
-    #             f"  Torrent File Created: {self.torrent_file_path}")
-
-
 def generate_info_hash(info_dict: dict) -> str:
     sha1_hash = hashlib.sha1()
     sha1_hash.update(bencodepy.encode(info_dict))
     return sha1_hash.digest().hex()
-
-if __name__ == "__main__":
-
-    torrent = torrent_file_creater("file.txt")
-    torrent_file_path = "file.txt.torrent"
-
-    # torrent_file_path = "gameoflifehowtop00shin_archive.torrent"
-    # torrent_file_path = "ubuntu-24.04.1-live-server-amd64.iso.torrent"
-    torrent = torrent_file_reader(torrent_file_path)

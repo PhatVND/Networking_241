@@ -1,7 +1,6 @@
 import logging
 import socket
 import threading
-import hashlib
 import os
 from database import *
 
@@ -67,7 +66,7 @@ class Tracker:
                         if not peers_list:
                             conn.sendall(f"No peers found for {torrent_hash}\n".encode('utf-8'))
                             continue
-                        else: conn.sendall(f"Downloading {torrent_hash} from peers: {peers_list}\n".encode('utf-8'))
+                        else: conn.sendall(f"Get peers list for {torrent_hash} are: {peers_list}\n".encode('utf-8'))
                     elif command == "EXIT":
                         peer_ip = params[0]
                         delete_peer_from_database(peer_ip)

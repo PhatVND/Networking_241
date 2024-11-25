@@ -1,11 +1,17 @@
 import psycopg2
 import logging
+import os
 from psycopg2 import sql
+
+log_dir = '../log'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
+        logging.FileHandler(os.path.join(log_dir, 'tracker.log')),
         logging.StreamHandler()
     ]
 )
