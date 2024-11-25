@@ -107,8 +107,8 @@ class torrent_file_reader(torrent_metadata):
         return torrent_data
 
 class torrent_file_creater(torrent_metadata):
-    def __init__(self, full_file_path: str):
-        self.trackers_url_list = ['udp://tracker.example.com:6969']
+    def __init__(self, full_file_path: str, trackers_url_list: list):
+        self.trackers_url_list = trackers_url_list
         self.full_file_path = full_file_path
         print(self.full_file_path)
         self.file_name = os.path.basename(full_file_path)

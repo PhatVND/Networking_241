@@ -20,7 +20,7 @@ logging.basicConfig(
 execute_sql_from_file('queries.sql')
 
 class Tracker:
-    def __init__(self, host='127.0.0.1', port=5000):
+    def __init__(self, host='0.0.0.0', port=5000):
         self.host = host
         self.port = port
         self.pieces = {} 
