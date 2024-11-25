@@ -5,6 +5,7 @@ import sys
 import time
 import logging
 import logging.handlers
+import random
 from torrentClient import *
 
 log_dir = '../log'
@@ -41,6 +42,7 @@ class File:
         self.pieces = pieces
         self.info_hash = info_hash
         self.pieces_hash = {}
+        self.pieces_index_list = {} #set of piece index which are not downloaded
 
 class Peer:
     def __init__(self, peer_id, tracker_host, tracker_port):
@@ -49,8 +51,9 @@ class Peer:
         self.tracker_port = tracker_port
         self.files = {}
 
+        self.peer_host = '0.0.0.0'
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind(('localhost', 0))
+        self.server_socket.bind((self.peer_host, 0))
         self.server_socket.listen()
         self.peer_host, self.peer_port = self.server_socket.getsockname()
         self.peer_ip = f"{self.peer_host}:{self.peer_port}"
@@ -90,67 +93,120 @@ class Peer:
         finally:
             conn.close() 
 
-    def connect_to_tracker(self):
+    def connect_to_tracker(self, tracker_host, tracker_port):
         self.tracker_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tracker_conn.connect((self.tracker_host, self.tracker_port))
+        self.tracker_conn.connect((tracker_host, tracker_port))
     def split_ip(self, peer_ip):
         return peer_ip.split(':')
     def file_exists(self, full_file_path):
         return os.path.exists(full_file_path)
-
-
-    def write_piece_to_file(self, torrent, file_path, piece, piece_index):
-        full_file_path = os.path.join(file_path, torrent.file_name)
-        if not os.path.exists(file_path):
-            os.makedirs(file_path)
-        
-        if os.path.exists(full_file_path):
-            mode = 'r+b'
-        else:
-            mode = 'wb'
-
-        with open(full_file_path, mode) as f:
-            start_position = piece_index * torrent.piece_length
-            f.seek(start_position)
-            f.write(piece)
-
-        logging.debug(f"Piece {piece_index} of {torrent.file_name} written!")
-           
-    def download_piece_from_peer(self, torrent_hash, piece_index, peer_ip):
-        peer_host, peer_port = peer_ip.split(':')
-        peer_port = int(peer_port)
+    
+    def register_pieces(self, torrent_hash, piece_index_list, peer_ip):
         try:
+            peer_host, peer_port = peer_ip.split(':')
+            self.files[torrent_hash].pieces_index_list.update(piece_index_list)
             ##################################
             peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             peer_conn.connect((peer_host, peer_port))
-    
-            peer_conn.sendall(f"GET {torrent_hash} {piece_index}".encode('utf-8'))
-            piece = peer_conn.recv(4096)
-            logging.debug(f"Downloaded piece {piece_index} of {torrent_hash} from {peer_ip}")
+            peer_conn.sendall(f"REGISTER {torrent_hash} {','.join(map(str, piece_index_list))}".encode('utf-8'))
+            response = peer_conn.recv(1024).decode('utf-8')
             ##################################
+            logging.debug(response)
         except Exception as e:
-            logging.error( f"Error downloading piece {piece_index} of {torrent_hash} from {peer_ip}: {e}")
-            piece = None
+            logging.error(f"Error registering pieces for {torrent_hash} with {peer_ip}: {e}")
+        finally:
+            peer_conn.close()
+        
+    def download_piece_from_peer(self, torrent, file_path, piece_index, peer_ip):
+        full_file_path = os.path.join(file_path, torrent.file_name)
+        if not os.path.exists(file_path):
+            os.makedirs(file_path)
+        if self.file_exists(full_file_path): 
+            mode = 'r+b'
+        else:
+            mode = 'wb'
+        try:
+            peer_host, peer_port = peer_ip.split(':')
+            peer_port = int(peer_port)
+            ##################################
+            peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            peer_conn.connect((peer_host, peer_port))
+            peer_conn.sendall(f"GET {torrent.info_hash} {piece_index}".encode('utf-8'))
+            piece = peer_conn.recv(4096)
+            ##################################
+            if piece:
+                start_position = piece_index * torrent.piece_length
+                with open(full_file_path, mode) as f:
+                    f.seek(start_position)
+                    f.write(piece)
+                self.files[torrent.info_hash].pieces_index_list.discard(piece_index)
+                logging.debug(f"Downloaded piece {piece_index} of {torrent.info_hash} from {peer_ip}")
+                return piece
+            else:
+                logging.error(f"No data received for piece {piece_index} of {torrent.file_name} from {peer_ip}")
+
+        except Exception as e:
+            logging.error(f"Error downloading piece {piece_index} of {torrent.info_hash} from {peer_ip}: {e}")
+
         finally:
             if hasattr(peer_conn, 'close') and peer_conn:
                 peer_conn.close()
-            return piece
-    def get_pieces_from_other_peer(self, torrent, peers_list, file_path):
-        pieces = {}
+
+    def get_peers_list(self, torrent_hash, piece_index):
+        try:
+            ##################################
+            # Get peers list already seeding this file
+            self.connect_to_tracker(self.tracker_host, self.tracker_port)
+            message = f"GET_PEERS {torrent_hash} {piece_index}"
+            self.tracker_conn.sendall(message.encode('utf-8'))
+            response = self.tracker_conn.recv(1024).decode('utf-8')
+            ##################################
+            logging.debug(response)
+            if response.startswith("Downloading"):
+                peers_list_str = response.split("Downloading ")[1].split(": ")[1]
+                peers_list = [p.strip("' ") for p in peers_list_str.strip("[]\n").split(", ") if p]
+            return peers_list
+        except Exception as e:
+            logging.error( f"Error getting peers list: {e}")
+            return None
+        finally:
+            self.tracker_conn.close()
+
+    def piece_selection_startergy(self, torrent_hash):
+        piece_index_list = list(self.files[torrent_hash].pieces_index_list)
+        random.shuffle( piece_index_list)
+        return piece_index_list[:10]
+
+    def peer_selection_startergy(self, torrent_hash, ):
+        peer_list = self.get_peers_list(torrent_hash, 0)
+        random.shuffle(peer_list)
+        return peer_list[:4]
+
+    def download_complete(self, piece_index_list):
+        return len(piece_index_list) == 0
+
+    def download_stratergy(self, torrent, file_path):
         start_time = time.time()
         last_response_time = start_time
         piece_index_list = []
-        ########## For random algorithm
-        for piece_index in range(torrent.pieces_count):
-            peer_ip = peers_list[piece_index % len(peers_list)]
+        while not self.download_complete(piece_index_list):
             try:
-                piece = self.download_piece_from_peer(torrent.info_hash, piece_index, peer_ip)
-                self.write_piece_to_file(torrent, file_path, piece, piece_index)
-                if piece:
-                    pieces[piece_index] = piece
-                    piece_index_list.append(piece_index)
-                else:
-                    logging.error(f"Failed to download piece {piece_index}")
+                pieces = self.piece_selection_startergy( torrent.info_hash )
+                peer_ip_list = self.peer_selection_startergy( torrent.info_hash )
+                downloading_thread_pool = []
+                for i in range(min(len(pieces), len(peer_ip_list))):
+                    piece_index = pieces[i]
+                    peer_ip = peer_ip_list[i]
+                download_thread = threading.Thread(target=self.download_piece_from_peer, 
+                                                    args=(torrent, file_path, piece_index, peer_ip))
+                downloading_thread_pool.append(download_thread)
+                download_thread.start()
+                for downloading_thread in downloading_thread_pool:
+                    downloading_thread.join()
+                    if downloading_thread.result():
+                        piece_index_list.append(piece_index)
+                self.register_pieces(torrent.info_hash, piece_index_list, self.peer_ip)
+
             except Exception as e:
                 logging.error( f"Error downloading pieces from peer {peer_ip}: {e}")
 
@@ -163,19 +219,9 @@ class Peer:
             if current_time - last_response_time >= 5:
                 self.register_pieces(torrent.info_hash, piece_index_list, self.peer_ip)
                 last_response_time = current_time
+        logging.info( f"Download file completed in {round(time.time() - start_time, 2)} seconds")
 
-        full_torrent_file_path = os.path.join('../torrent', torrent.file_name + '.torrent')
-        self.register_file(full_torrent_file_path, file_path)
-        logging.info( f"Download file completed in {time.time() - start_time} seconds")
 
-    def register_pieces(self, torrent_hash, piece_index_list, peer_ip):
-        peer_host, peer_port = peer_ip.split(':')
-        peer_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        peer_conn.connect((peer_host, peer_port))
-        peer_conn.sendall(f"REGISTER {torrent_hash} {','.join(map(str, piece_index_list))}".encode('utf-8'))
-        response = peer_conn.recv(1024).decode('utf-8')
-        logging.debug(response)
-        peer_conn.close()
 
     def register_file(self, full_torrent_file_path, file_path):
         torrent = torrent_file_reader(full_torrent_file_path)
@@ -183,7 +229,7 @@ class Peer:
             piece_index_list = [i for i in range(torrent.pieces_count)]
             piece_index_str = ",".join(map(str, piece_index_list))
             ##################################
-            self.connect_to_tracker()
+            self.connect_to_tracker(self.tracker_host, self.tracker_port)
             message = f"REGISTER {torrent.info_hash} {piece_index_str} {self.peer_host}:{self.peer_port}"
             self.tracker_conn.sendall(message.encode('utf-8'))
             response = self.tracker_conn.recv(1024).decode('utf-8')
@@ -201,20 +247,16 @@ class Peer:
     def download_file(self, full_torrent_file_path, file_path):
         try:
             torrent = torrent_file_reader(full_torrent_file_path)
-            torrent_hash = torrent.info_hash
-            ##################################
-            # Get peers list already seeding this file
-            self.connect_to_tracker()
-            message = f"DOWNLOAD {torrent_hash}"
-            self.tracker_conn.sendall(message.encode('utf-8'))
-            response = self.tracker_conn.recv(1024).decode('utf-8')
-            logging.info( response)
-            ##################################
-            if response.startswith("Downloading"):
-                peers_list_str = response.split("Downloading ")[1].split(": ")[1]
-                peers_list = [p.strip("' ") for p in peers_list_str.strip("[]\n").split(", ") if p]
+            self.files[torrent.info_hash] = File(torrent.file_name, file_path, torrent.file_size, 
+                                                 torrent.piece_length, torrent.pieces_count, 
+                                                 torrent.pieces, torrent.info_hash)
+            self.files[torrent.info_hash].pieces_index_list = set(range(torrent.pieces_count))
 
-                self.get_pieces_from_other_peer(torrent, peers_list, file_path)
+            self.download_stratergy(torrent, file_path) 
+
+            full_torrent_file_path = os.path.join('../torrent', torrent.file_name + '.torrent')
+            self.register_file(full_torrent_file_path, file_path)
+
         except Exception as e:
             logging.error( f"Error downloading file: {e}")
         finally:
@@ -223,7 +265,7 @@ class Peer:
 
     def exit_peer(self):
         ##################################
-        self.connect_to_tracker()
+        self.connect_to_tracker( self.tracker_host, self.tracker_port)
         message = f"EXIT {self.peer_host}:{self.peer_port}"
         self.tracker_conn.sendall(message.encode('utf-8'))
         self.server_socket.close()
@@ -266,7 +308,7 @@ class Peer:
 
                 elif command == "3" or command == "download":
                     torrent_name = input("Enter the torrent file_name to download: ")
-                    file_path = input(f"Enter the full path to download in: ")
+                    file_path = "../" +input(f"Enter the full path to download in: ")
                     full_torrent_file_path = os.path.join("torrent", torrent_name + '.torrent')
                     if self.file_exists(full_torrent_file_path):
                         self.download_file(full_torrent_file_path, file_path)

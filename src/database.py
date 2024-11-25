@@ -2,7 +2,13 @@ import psycopg2
 import logging
 from psycopg2 import sql
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 
 def connect_to_database():
     try:
