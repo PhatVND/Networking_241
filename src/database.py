@@ -1,20 +1,15 @@
 import psycopg2
 import logging
-import os
 from psycopg2 import sql
 
-log_dir = '../log'
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(os.path.join(log_dir, 'tracker.log')),
-        logging.StreamHandler()
-    ]
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler(os.path.join(log_dir, 'tracker.log')),
+#         logging.StreamHandler()
+#     ]
+# )
 
 def connect_to_database():
     try:
@@ -131,7 +126,7 @@ def delete_piece_peers_from_database(peer_ip):
     params = (peer_ip,)
     try:
         execute_sql_query(query, params)
-        logging.info(f"PIECE_PEERS for peer {peer_ip} deleted successfully.")
+        logging.debug(f"PIECE_PEERS for peer {peer_ip} deleted successfully.")
         return True
     except Exception as e:
         logging.error(f"Error deleting peer {peer_ip}: {e}")
@@ -146,7 +141,7 @@ def delete_peer_from_database(peer_ip):
     params = (peer_ip,)
     try:
         execute_sql_query(query, params)
-        logging.info(f"PEER {peer_ip} deleted successfully.")
+        logging.debug(f"PEER {peer_ip} deleted successfully.")
         return True
     except Exception as e:
         logging.error(f"Error deleting peer {peer_ip}: {e}")
@@ -159,7 +154,7 @@ def drop_tables_from_database():
     """
     try:
         execute_sql_query(query)
-        logging.info("TABLE dropped successfully.")
+        logging.debug("TABLE dropped successfully.")
         return True
     except Exception as e:
         logging.error(f"Error dropping tables: {e}")

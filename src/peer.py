@@ -35,9 +35,10 @@ def setup_logging(peer_port):
 
 def get_wifi_ip():
     for interface, addrs in psutil.net_if_addrs().items():
-        if 'wlo1' in interface.lower():
+        if 'wlo1' in interface.lower() or 'wi-fi' in interface.lower():
             for addr in addrs:
-                return addr.address
+                if addr.netmask != None:
+                    return addr.address
     return None
 
 class File:
@@ -122,11 +123,12 @@ class Peer:
     
     def register_pieces(self, torrent_hash, piece_index_list, tracker_ip):
         try:
-            for piece_index in piece_index_list:
-                self.files[torrent_hash].pieces_index_list.discard(piece_index)
-
-            piece_index_list_str = ",".join(map(str, piece_index_list))
-            
+            if type(piece_index_list) != str:
+                for piece_index in piece_index_list:
+                    self.files[torrent_hash].pieces_index_list.discard(piece_index)
+                piece_index_list_str = ",".join(map(str, piece_index_list))
+            else :
+                piece_index_list_str = piece_index_list
             ##################################
             tracker_host, tracker_port = self.ip_split(tracker_ip)
             self.connect_to_tracker(tracker_host, tracker_port)
@@ -144,7 +146,7 @@ class Peer:
     def register_file(self, file_name, file_path):
         torrent = torrent_file_reader(file_name)
         try:
-            piece_index_list = [i for i in range(torrent.pieces_count)]
+            piece_index_list = f":{torrent.pieces_count}" 
             self.files[torrent.info_hash] = File(torrent.file_name, file_path, torrent.file_size,
                                                  torrent.piece_length, torrent.pieces_count, 
                                                  torrent.pieces, torrent.info_hash)
@@ -237,6 +239,7 @@ class Peer:
 
     def download_stratergy(self, torrent, file_path):
         start_time = time.time()
+        print("Downloading...")
         while not self.download_complete(self.files[torrent.info_hash].pieces_index_list):
             try:
                 piece_index_list = self.piece_selection_startergy( torrent.info_hash )
@@ -344,6 +347,13 @@ class Peer:
                 logging.error( f"Error closing server socket: {str(e)}")
         sys.exit(0)
 
+    def exit_peer(self):
+        ##################################
+        self.connect_to_tracker( self.tracker_host, self.tracker_port )
+        message = f"EXIT {self.peer_ip}"
+        self.tracker_conn.sendall(message.encode('utf-8'))
+        self.server_socket.close()
+        ##################################
 
 if __name__ == "__main__":
     peer = Peer("10.0.103.45", 5000)

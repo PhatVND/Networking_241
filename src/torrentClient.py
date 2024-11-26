@@ -80,37 +80,10 @@ class torrent_file_reader(torrent_metadata):
                 torrent_extract[new_key] = value
         return torrent_extract
 
-    def get_data(self):
-        return torrent_metadata(self.trackers_url_list, self.file_name, 
-                                self.file_size,         self.piece_length, self.pieces_count,     
-                                self.pieces,            self.info_hash, self.files)
-   
-    def __str__(self) -> str:
-        units = ["Bytes", "KB", "MB", "GB"]
-        
-        def format_size(size):
-            unit_index = 0
-            while size >= 1024 and unit_index < len(units) - 1:
-                size /= 1024
-                unit_index += 1
-            return round(size, 2), units[unit_index]
-        
-        size, size_unit = format_size(self.file_size)
-        piece_length, piece_length_unit = format_size(self.piece_length)
-        
-        torrent_data = "CLIENT TORRENT DATA\n"
-        torrent_data += f"File name: {self.file_name}\n"
-        torrent_data += f"File size: {size} {size_unit}\n"
-        torrent_data += f"Piece length: {piece_length} {piece_length_unit}\n"
-        torrent_data += f"Info hash: {self.info_hash}\n"
-        torrent_data += f"Files: {len(self.files) if self.files else self.files}\n"
-        return torrent_data
-
 class torrent_file_creater(torrent_metadata):
     def __init__(self, full_file_path: str, trackers_url_list: list):
         self.trackers_url_list = trackers_url_list
         self.full_file_path = full_file_path
-        print(self.full_file_path)
         self.file_name = os.path.basename(full_file_path)
         self.file_size = os.path.getsize(full_file_path)
         self.piece_length = 4096
