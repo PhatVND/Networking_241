@@ -23,8 +23,8 @@ class torrent_file_reader(torrent_metadata):
             torrent_data = file.read()
         self.torrent_file_raw_extract = bencodepy.decode(torrent_data)
         
-        if b'encoding' in self.torrent_file_raw_extract.keys():
-            self.encoding = self.torrent_file_raw_extract[b'encoding'].decode()
+        if 'encoding' in self.torrent_file_raw_extract.keys():
+            self.encoding = self.torrent_file_raw_extract['encoding'].decode()
         else:
             self.encoding = 'UTF-8'
         ##################### 
@@ -35,20 +35,20 @@ class torrent_file_reader(torrent_metadata):
             trackers_url_list = self.torrent_file_extract['announce-list'] 
         else:
             trackers_url_list = [self.torrent_file_extract['announce']]
-        file_name    = self.torrent_file_extract['info'][b'name'].decode(self.encoding)
-        piece_length = self.torrent_file_extract['info'][b'piece length']
-        pieces       = self.split_piece_hash(self.torrent_file_extract['info'][b'pieces'])
+        file_name    = self.torrent_file_extract['info']['name']
+        piece_length = self.torrent_file_extract['info']['piece length']
+        pieces       = self.split_piece_hash(self.torrent_file_extract['info']['pieces'])
         pieces_count = len(pieces)
         info_hash    = generate_info_hash(self.torrent_file_extract['info'])
         files = None
-        if b'files' in self.torrent_file_extract['info'].keys():
-            files_dictionary = self.torrent_file_extract['info'][b'files']
-            files = [(file_data[b'length'], file_data[b'path']) for file_data in files_dictionary]
+        if 'files' in self.torrent_file_extract['info'].keys():
+            files_dictionary = self.torrent_file_extract['info']['files']
+            files = [(file_data['length'], file_data['path']) for file_data in files_dictionary]
             file_size = 0
             for file_length in files:
                 file_size += file_length[0]
         else: 
-            file_size = self.torrent_file_extract['info'][b'length']
+            file_size = self.torrent_file_extract['info']['length']
         super().__init__(trackers_url_list, file_name, file_size, piece_length, pieces_count, pieces, info_hash, files)
             
 

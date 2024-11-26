@@ -35,9 +35,10 @@ def setup_logging(peer_port):
 
 def get_wifi_ip():
     for interface, addrs in psutil.net_if_addrs().items():
-        if 'wlo1' in interface.lower():
+        if 'wlo1' in interface.lower() or 'wi-fi' in interface.lower():
             for addr in addrs:
-                return addr.address
+                if(addr.netmask != None):
+                    return addr.address
     return None
 
 class File:
@@ -143,6 +144,7 @@ class Peer:
         
     def register_file(self, file_name, file_path):
         torrent = torrent_file_reader(file_name)
+        print("ok")
         try:
             piece_index_list = [i for i in range(torrent.pieces_count)]
             self.files[torrent.info_hash] = File(torrent.file_name, file_path, torrent.file_size,
