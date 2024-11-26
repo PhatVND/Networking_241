@@ -81,7 +81,6 @@ def register_peer_in_database(peer_ip):
         is_query_executed = execute_sql_query(query, params)
         if not is_query_executed:
             return False
-        logging.info(f"PEER {peer_ip} registered successfully.")
         return True
     except Exception as e:
         logging.error(f"Error registering peer {peer_ip}: {e}")
@@ -102,7 +101,7 @@ def register_piece_in_database(info_hash, pieces_list, peer_ip):
     try:
         for param in params:
             execute_sql_query(query, param)
-        logging.info(f"Peer {peer_ip} seeding PIECE for torrent {info_hash}.")
+        logging.debug(f"Peer {peer_ip} seeding PIECE for torrent {info_hash}.")
         return True
     except Exception as e:
         logging.error(f"Error registering pieces for peer {peer_ip}: {e}")

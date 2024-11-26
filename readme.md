@@ -15,7 +15,7 @@ This project implements a basic peer-to-peer (P2P) file-sharing system with a tr
 
 ### Connect database
 Install database postgresql and GUI like SQLTools with its driver.
-Install some package like psycopg2, bencodepy
+Install some package like psycopg2, bencodepy, psutil
 
 ### 1. Start the Tracker (`tracker.py`)
 

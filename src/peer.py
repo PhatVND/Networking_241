@@ -7,7 +7,7 @@ import logging
 import logging.handlers
 import random
 import hashlib
-# import psutil
+import psutil
 from torrentClient import *
 
 log_dir = '../log'
@@ -33,6 +33,12 @@ def setup_logging(peer_port):
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
+def get_wifi_ip():
+    for interface, addrs in psutil.net_if_addrs().items():
+        if 'wlo1' in interface.lower():
+            for addr in addrs:
+                return addr.address
+    return None
 
 class File:
     def __init__(self, file_name, file_path, file_size, piece_length, pieces_count, pieces, info_hash):
@@ -54,10 +60,11 @@ class Peer:
         self.tracker_url_list = [f"{self.tracker_host}:{self.tracker_port}"]
         self.files = {}
 
-        self.peer_host = '0.0.0.0'
+        self.peer_host = get_wifi_ip()
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.peer_host, 0))
         self.server_socket.listen()
+
         self.peer_host, self.peer_port = self.server_socket.getsockname()
         self.peer_ip = f"{self.peer_host}:{self.peer_port}"
         setup_logging(self.peer_port)
@@ -337,12 +344,6 @@ class Peer:
                 logging.error( f"Error closing server socket: {str(e)}")
         sys.exit(0)
 
-# def get_wifi_ip():
-#     for interface, addrs in psutil.net_if_addrs().items():
-#         if 'wlo1' in interface.lower():
-#             for addr in addrs:
-#                 return addr.address
-#     return None
 
 if __name__ == "__main__":
     peer = Peer("10.0.103.45", 5000)
