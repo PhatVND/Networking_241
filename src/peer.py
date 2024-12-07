@@ -39,7 +39,7 @@ def get_wifi_ip():
             for addr in addrs:
                 if addr.netmask != None:
                     return addr.address
-    return None
+    return '127.0.0.1'
 
 class File:
     def __init__(self, file_name, file_path, file_size, piece_length, pieces_count, pieces, info_hash):
@@ -356,6 +356,7 @@ class Peer:
         ##################################
 
 if __name__ == "__main__":
-    peer = Peer("10.0.103.45", 5000)
+    ip = get_wifi_ip()
+    peer = Peer(ip, 5000)
     peer.input_commands()
 

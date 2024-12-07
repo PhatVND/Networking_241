@@ -1,6 +1,5 @@
 import hashlib
 import bencodepy
-import logging
 import os
 from collections import OrderedDict
 import random as rd
